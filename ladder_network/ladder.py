@@ -59,8 +59,8 @@ class Ladder(torch.nn.Module):
         return self.de.bn_hat_z_layers(hat_z_layers, z_pre_layers)
 
 
-def evaluate_performance(ladder, valid_loader, e, agg_cost_scaled, agg_supervised_cost_scaled,
-                         agg_unsupervised_cost_scaled, use_cuda,  best_answer):
+def evaluate_performance(ladder, valid_loader, test_loader, e, agg_cost_scaled, agg_supervised_cost_scaled,
+                         agg_unsupervised_cost_scaled, use_cuda,  best_answer, best_test):
     correct = 0.
     total = 0.
     for batch_idx, (data, target) in enumerate(valid_loader):
@@ -79,17 +79,43 @@ def evaluate_performance(ladder, valid_loader, e, agg_cost_scaled, agg_supervise
         total += target.shape[0]
 
     best_answer = max(correct /total, best_answer)
+
+    # test 
+    t_correct = 0.
+    t_total = 0.
+    for batch_idx, (data, target) in enumerate(test_loader):
+        if use_cuda:
+            data = data.cuda()
+        data, target = Variable(data), Variable(target)
+        output = ladder.forward_encoders_clean(data)
+        # TODO: Do away with the below hack for GPU tensors.
+        if use_cuda:
+            output = output.cpu()
+            target = target.cpu()
+        output = output.data.numpy()
+        preds = np.argmax(output, axis=1)
+        target = target.data.numpy()
+        t_correct += np.sum(target == preds)
+        t_total += target.shape[0]
+    
+    if correct /total==best_answer: # best valid
+        best_test = t_correct/t_total
+
     print("Epoch:", e + 1, ", ",
           "Supervised Cost:", "{:.2f}".format(agg_supervised_cost_scaled), ", ",
           "Unsupervised Cost:", "{:.2f}".format(agg_unsupervised_cost_scaled), ", ",
           "CV:", correct / total, ", ",
-          "Best CV:", best_answer)
-    return best_answer
+          "Best CV:", best_answer,
+          "test:", t_correct / t_total, ", ",
+          "Best test:", best_test)
+
+    return best_answer, best_test
 
 
 def main():
     start_time = time.time() 
     best_answer = 0.0 #the best accuracy until now.
+    best_test = 0.0 #the best accuracy until now.
 
 
     """parameter adjust"""
@@ -139,23 +165,33 @@ def main():
     train_unlabelled_labels_filename = os.path.join(data_dir, "train_unlabelled_labels.p")
     validation_images_filename = os.path.join(data_dir, "validation_images.p")
     validation_labels_filename = os.path.join(data_dir, "validation_labels.p")
+    test_images_filename = os.path.join(data_dir, "test_images.p")
+    test_labels_filename = os.path.join(data_dir, "test_labels.p")
 
     print("Loading Data....")
     with open(train_labelled_images_filename, 'rb') as f:
         train_labelled_images = pickle.load(f)
-    train_labelled_images = train_labelled_images.reshape(train_labelled_images.shape[0], 784)
+    im_size = np.shape(train_labelled_images)[1]**2
+    train_labelled_images = train_labelled_images.reshape(train_labelled_images.shape[0], im_size)
     with open(train_labelled_labels_filename, 'rb') as f:
         train_labelled_labels = pickle.load(f).astype(int)
     with open(train_unlabelled_images_filename, 'rb') as f:
         train_unlabelled_images = pickle.load(f)
-    train_unlabelled_images = train_unlabelled_images.reshape(train_unlabelled_images.shape[0], 784)
+    train_unlabelled_images = train_unlabelled_images.reshape(train_unlabelled_images.shape[0], im_size)
     with open(train_unlabelled_labels_filename, 'rb') as f:
         train_unlabelled_labels = pickle.load(f).astype(int)
+
     with open(validation_images_filename, 'rb') as f:
         validation_images = pickle.load(f)
-    validation_images = validation_images.reshape(validation_images.shape[0], 784)
+    validation_images = validation_images.reshape(validation_images.shape[0], im_size)
     with open(validation_labels_filename, 'rb') as f:
         validation_labels = pickle.load(f).astype(int)
+        
+    with open(test_images_filename, 'rb') as f:
+        test_images = pickle.load(f)
+    test_images = test_images.reshape(test_images.shape[0], im_size)
+    with open(test_labels_filename, 'rb') as f:
+        test_labels = pickle.load(f).astype(int)
 
     print("* Labelled datas:", train_labelled_images.shape[0])
     print("* Unlabelled datas:", train_unlabelled_images.shape[0])
@@ -165,6 +201,8 @@ def main():
     unlabelled_loader = DataLoader(unlabelled_dataset, batch_size=batch_size, shuffle=True, **kwargs)
     validation_dataset = TensorDataset(torch.FloatTensor(validation_images), torch.LongTensor(validation_labels))
     validation_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=True, **kwargs)
+    test_dataset = TensorDataset(torch.FloatTensor(test_images), torch.LongTensor(test_labels))
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, **kwargs)
 
 
     ladder = Ladder(encoder_sizes, decoder_sizes, encoder_activations,
@@ -212,9 +250,9 @@ def main():
             current_lr = starter_lr * ratio
             optimizer = Adam(ladder.parameters(), lr=current_lr)
         """
-        if e == np.ceil(epochs * 0.25): current_lr = start_l / 2:
-        if e == np.ceil(epochs * 0.5): current_lr = start_l / 10
-        if e == np.ceil(epochs * 0.75): current_lr = start_l / 10:
+        if e == np.ceil(epochs * 0.25): current_lr = starter_lr / 2
+        if e == np.ceil(epochs * 0.5): current_lr = starter_lr / 10
+        if e == np.ceil(epochs * 0.75): current_lr = starter_lr / 10
 
 
         for batch_idx, (unlabelled_images, unlabelled_labels) in enumerate(unlabelled_loader):
@@ -271,6 +309,8 @@ def main():
             bn_hat_z_layers_unlabelled = ladder.decoder_bn_hat_z_layers(hat_z_layers_unlabelled, z_pre_layers_unlabelled)
 
             # calculate costs
+            #print (np.shape(output_noise_labelled), np.shape(labelled_target))
+            #print (output_noise_labelled, labelled_target)
             cost_supervised = loss_supervised.forward(output_noise_labelled, labelled_target)
             cost_unsupervised = 0.
             assert len(z_layers_unlabelled) == len(bn_hat_z_layers_unlabelled)
@@ -293,12 +333,13 @@ def main():
             """Show the performance after every batch"""
             if ind_labelled == ind_limit:
                 ladder.eval()
-                best_answer = evaluate_performance(ladder, validation_loader, e,
+                best_answer, best_test = evaluate_performance(ladder, validation_loader, test_loader, e,
                                      agg_cost / num_batches,
                                      agg_supervised_cost / num_batches,
                                      agg_unsupervised_cost / num_batches,
                                      use_cuda,
-                                     best_answer)
+                                     best_answer,
+                                     best_test)
                 ladder.train()
     print("**********************************************")
     print("* Finish! The best accuracy: ", best_answer)

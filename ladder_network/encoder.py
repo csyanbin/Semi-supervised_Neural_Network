@@ -43,7 +43,7 @@ class Encoder(torch.nn.Module):
             self.activation = torch.nn.ReLU()
         elif activation_type == 'softmax':
             self.activation = torch.nn.Softmax()
-        elif activation_type == 'elu'
+        elif activation_type == 'elu':
             self.activation = torch.nn.ELU()
         else:
             raise ValueError("invalid Acitvation type")

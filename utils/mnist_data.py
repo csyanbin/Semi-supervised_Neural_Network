@@ -88,7 +88,7 @@ def main():
     n_labelled = args.num_labelled
     random.seed(42)
     np.random.seed(42)
-    data_dir = "../data/"
+    data_dir = "../data/mnist/"
     mnist_train_images_gz = 'train-images-idx3-ubyte.gz'
     mnist_train_labels_gz = 'train-labels-idx1-ubyte.gz'
     mnist_test_images_gz = 't10k-images-idx3-ubyte.gz'
@@ -102,7 +102,7 @@ def main():
     mnist_test_images = extract_images(mnist_test_images)
     mnist_test_labels = get_data(mnist_test_labels_gz, data_dir)
     mnist_test_labels = extract_labels(mnist_test_labels)
-
+    
     train_data_shuffle = [(x, y) for x, y in zip(mnist_train_images, mnist_train_labels)]
     random.shuffle(train_data_shuffle)
     mnist_shuffled_train_images = np.array([x[0] for x in train_data_shuffle])
@@ -123,6 +123,9 @@ def main():
     train_data_label_buckets = defaultdict(list)
 
     #split into different label class
+    print(np.shape(train_images), np.shape(train_labels))
+
+    exit(-1)
     for image, label in zip(train_images, train_labels):
         train_data_label_buckets[label].append((image, label))
 
