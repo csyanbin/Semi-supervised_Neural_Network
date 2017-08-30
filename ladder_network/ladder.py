@@ -78,7 +78,6 @@ def evaluate_performance(ladder, valid_loader, test_loader, e, agg_cost_scaled, 
         correct += np.sum(target == preds)
         total += target.shape[0]
 
-    best_answer = max(correct /total, best_answer)
 
     # test 
     t_correct = 0.
@@ -98,8 +97,12 @@ def evaluate_performance(ladder, valid_loader, test_loader, e, agg_cost_scaled, 
         t_correct += np.sum(target == preds)
         t_total += target.shape[0]
     
-    if correct /total==best_answer: # best valid
+    if correct /total>best_answer: # best valid
+        best_answer = correct /total
         best_test = t_correct/t_total
+    #if t_correct/t_total>best_test:
+    #    best_answer = correct /total
+    #    best_test = t_correct/t_total
 
     print("Epoch:", e + 1, ", ",
           "Supervised Cost:", "{:.2f}".format(agg_supervised_cost_scaled), ", ",

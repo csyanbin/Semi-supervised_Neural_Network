@@ -13,12 +13,13 @@ from scipy import io
 import random
 
 def load_data(train_nums=20):
-    # 1440*1024, 1440*1
-    n_class = 20
-    all_data = io.loadmat("../data/COIL20.mat")
+    # 862*32*32, 1*862
+    n_class = 10
+    all_data = io.loadmat("../data/hela_32_32.mat")
     all_fea  = all_data['fea']
-    all_label= all_data['gnd']
-    all_fea  = np.reshape(all_fea, (-1, 32, 32, 1))
+    all_label= all_data['label']
+    all_label  = np.transpose(all_label, (1, 0)) # 862*1
+    all_fea  = np.expand_dims(all_fea, -1) # 862*32*32*1
 
     mnist_train_images = []
     mnist_train_labels = []
@@ -61,7 +62,7 @@ def dump_pickle(filepath, d):
 def main():
     # command line arguments
     parser = argparse.ArgumentParser(description="Parser for MNIST data generation")
-    parser.add_argument("--num_labelled", type=int, default=20)
+    parser.add_argument("--num_labelled", type=int, default=10)
     parser.add_argument("--seed", type=int, default=1)
     args = parser.parse_args()
 
@@ -70,11 +71,13 @@ def main():
     rand_seed = args.seed
     random.seed(rand_seed)
     np.random.seed(rand_seed)
-    data_dir = "../data/coil-20-data/label"+str(int(n_labelled/20))+'_'+str(rand_seed)
+
+    n_class = 10
+    data_dir = "../data/hela-10-data/label"+str(int(n_labelled/n_class))+'_'+str(rand_seed)
     if not os.path.exists(data_dir):
-        os.system("mkdir %s" %(data_dir) )
+        os.system("mkdir -p %s" %(data_dir) )
     if not os.path.exists(data_dir+'_mat'):
-        os.system("mkdir %s" %(data_dir+'_mat') )
+        os.system("mkdir -p %s" %(data_dir+'_mat') )
     
 
     # load coil20 dataset 
@@ -85,8 +88,7 @@ def main():
     mnist_shuffled_train_images = np.array([x[0] for x in train_data_shuffle])
     mnist_shuffled_train_labels = np.array([x[1] for x in train_data_shuffle])
 
-    train_size = 400
-
+    train_size = n_class*20
     train_images = mnist_shuffled_train_images[:train_size].copy()
     train_labels = mnist_shuffled_train_labels[:train_size].copy()
 
@@ -103,6 +105,7 @@ def main():
         train_data_label_buckets[label].append((image, label))
 
     num_labels = len(train_data_label_buckets)
+    print(num_labels)
 
     train_labelled_data_images = []
     train_labelled_data_labels = []
@@ -110,7 +113,7 @@ def main():
     train_unlabelled_data_labels = []
     train_unlabelled_data_labels_mat = []
 
-
+    print(n_labelled)
     #uniform labeled data in different class
     for label, label_data in train_data_label_buckets.items():
         count = n_labelled / num_labels
@@ -139,10 +142,10 @@ def main():
     train_labelled_images, train_labelled_labels = shuffle_images_labels(train_labelled_images, train_labelled_labels)
 
     # normalizing, range[0, 1]
-    #train_labelled_images = np.multiply(train_labelled_images, 1./255.)
-    #train_unlabelled_images = np.multiply(train_unlabelled_images, 1./255.)
-    #validation_images = np.multiply(validation_images, 1./255.)
-    #test_images = np.multiply(test_images, 1./255,)
+    train_labelled_images = np.multiply(train_labelled_images, 1./65535.)
+    train_unlabelled_images = np.multiply(train_unlabelled_images, 1./65535.)
+    validation_images = np.multiply(validation_images, 1./65535.)
+    test_images = np.multiply(test_images, 1./65535,)
 
     print("=" * 50)
     print("train_labelled_images shape:", train_labelled_images.shape)
@@ -182,7 +185,7 @@ def main():
     io.savemat(data_dir + "_mat/all_mat.mat", all_mat)
 
 
-    print("coil dataset successfully created")
+    print("hela dataset successfully created")
 
 
 if __name__ == "__main__":
