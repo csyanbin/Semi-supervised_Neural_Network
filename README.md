@@ -1,4 +1,13 @@
 # Semi-supervised_Neural_Network
+
+pytorch version of code for paper: Semi-Supervised Learning with Ladder Networks
+
+forked from https://github.com/jibancanyang/Semi-supervised_Neural_Network
+
+experiments on coil20, hela10 and pollen7
+
+----------------------------------------------------------------------------------------
+
 A semi-supervised neural network which is based on the paper **Semi-Supervised Learning with Ladder Networks** by Pytorch.
 The sturctrue of this deep neural network combines supervised learning with unsupervised learning, and it is trained to simultaneously minimize the sum of supervised and unsupervised cost functions by backpropagation.In fact, the unsupervised learing complement supervised learing mission to get a better result.
 
@@ -39,3 +48,4 @@ In my machine the GPU(GTX 1080ti) version cost about 121 s/epoch, but the CPU ve
 ```python
 torch.cuda.is_available() 
 ```
+# Semi-supervised_Neural_Network
