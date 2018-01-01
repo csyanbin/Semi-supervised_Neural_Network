@@ -4,11 +4,14 @@ label = sys.argv[1]
 rand  = sys.argv[2]
 
 ratio = 1.0
-dataset = 'coil'
+dataset = 'pollen'
+resolution = 25
 if len(sys.argv)>=4:
     ratio = float(sys.argv[3])
 if len(sys.argv)==5:
     dataset = sys.argv[4]
+if len(sys.argv)==6:
+    resolution = int(sys.argv[5])
 
 if dataset=='coil':
     folder = '../data/coil-20-data/label'+label+'_'+rand+'/'
@@ -23,9 +26,13 @@ elif dataset=="hela":
     batch = 10
     lr = 0.001
 elif dataset=="pollen":
-    folder = '../data/pollen-7-data/label'+label+'_'+rand+'/'
+    if resolution==25:
+        folder = '../data/pollen-7-data/label'+label+'_'+rand+'/'
+    else:
+        folder = '../data/pollen-7-data/label'+str(resolution)+'_'+label+'_'+rand+'/'
+
     n_class= 7
-    n_input=625
+    n_input=resolution*resolution
     batch = 7
     lr = 0.001
 

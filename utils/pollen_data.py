@@ -10,14 +10,32 @@ import argparse
 import urllib.request
 
 from scipy import io
+from PIL import Image
 import random
 
-def load_data(train_nums=20):
-    # 32*32*862, 862*1
+def resize_imgs(all_fea, outsize):
+    # input, 25*25*630, output, x*x*630
+    print(np.shape(all_fea))
+    num = np.shape(all_fea)[-1]
+    out_fea = np.zeros([outsize, outsize, num])
+    
+    for i in range(num):
+        img = Image.fromarray(all_fea[:,:,i])
+        img2 = img.resize([outsize,outsize])
+        img2_array = np.asarray(img2)
+        out_fea[:,:,i] = img2_array
+
+    return out_fea
+
+def load_data(resolution,train_nums=20):
+    # 25*25*630, 630*1
     n_class = 7
     all_data = io.loadmat("../data/pollen_25_25.mat")
     all_fea  = all_data['COIL']
     all_label= all_data['gnd']
+    if not resolution==25:
+        all_fea = resize_imgs(all_fea, resolution)
+        print(np.shape(all_fea))
     all_fea  = np.transpose(all_fea, (2, 0, 1))
     all_fea  = np.expand_dims(all_fea, -1)
 
@@ -64,16 +82,23 @@ def main():
     parser = argparse.ArgumentParser(description="Parser for MNIST data generation")
     parser.add_argument("--num_labelled", type=int, default=7)
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--resolution", type=int, default=25)
     args = parser.parse_args()
 
     n_labelled = args.num_labelled
+    resolution = args.resolution
 
     rand_seed = args.seed
     random.seed(rand_seed)
     np.random.seed(rand_seed)
 
     n_class = 7
-    data_dir = "../data/pollen-7-data/label"+str(int(n_labelled/n_class))+'_'+str(rand_seed)
+    # default resolution is 25*25
+    if args.resolution==25:
+        data_dir = "../data/pollen-7-data/label"+str(int(n_labelled/n_class))+'_'+str(rand_seed)
+    else:
+        data_dir = "../data/pollen-7-data/label"+str(resolution)+"_"+str(int(n_labelled/n_class))+'_'+str(rand_seed)
+
     if not os.path.exists(data_dir):
         os.system("mkdir -p %s" %(data_dir) )
     if not os.path.exists(data_dir+'_mat'):
@@ -81,7 +106,7 @@ def main():
     
 
     # load coil20 dataset 
-    mnist_train_images, mnist_train_labels, mnist_test_images, mnist_test_labels = load_data()
+    mnist_train_images, mnist_train_labels, mnist_test_images, mnist_test_labels = load_data(resolution)
 
     train_data_shuffle = [(x, y) for x, y in zip(mnist_train_images, mnist_train_labels)]
     random.shuffle(train_data_shuffle)
@@ -185,7 +210,7 @@ def main():
     io.savemat(data_dir + "_mat/all_mat.mat", all_mat)
 
 
-    print("hela dataset successfully created")
+    print("pollen dataset successfully created")
 
 
 if __name__ == "__main__":
