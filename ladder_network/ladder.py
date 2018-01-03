@@ -335,14 +335,15 @@ def main():
 
             """Show the performance after every batch"""
             if ind_labelled == ind_limit:
-                ladder.eval()
-                best_answer, best_test = evaluate_performance(ladder, validation_loader, test_loader, e,
-                                     agg_cost / num_batches,
-                                     agg_supervised_cost / num_batches,
-                                     agg_unsupervised_cost / num_batches,
-                                     use_cuda,
-                                     best_answer,
-                                     best_test)
+                if e%10==0:
+                    ladder.eval()
+                    best_answer, best_test = evaluate_performance(ladder, validation_loader, test_loader, e,
+                                         agg_cost / num_batches,
+                                         agg_supervised_cost / num_batches,
+                                         agg_unsupervised_cost / num_batches,
+                                         use_cuda,
+                                         best_answer,
+                                         best_test)
                 ladder.train()
     print("**********************************************")
     print("* Finish! The best accuracy: ", best_answer)

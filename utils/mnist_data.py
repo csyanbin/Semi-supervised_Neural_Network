@@ -9,62 +9,42 @@ import pickle
 import argparse
 import urllib.request
 
+from scipy import io
+import random
 
-def get_data(filename, directory,
-             data_url="http://yann.lecun.com/exdb/mnist/",
-             verbose=True):
-    """download the data
-    """
-    if not os.path.exists(directory): os.mkdir(directory)
-    filepath = os.path.join(directory, filename)
-    if not os.path.exists(filepath):
-        filepath, _ = urllib.request.urlretrieve(data_url + filename, filepath)
-        statinfo = os.stat(filepath)
-        if verbose:
-            print('Succesfully downloaded', filename, statinfo.st_size, 'bytes.')
-    else: print('{0} have existed!!'.format(filepath)) 
-    return filepath
+def load_data(train_nums=20):
+    # 16*16*70000, 70000*1
+    n_class = 10
+    all_data = io.loadmat("../data/MNIST16.mat")
+    all_fea  = all_data['fea']
+    all_label= all_data['gnd']
+    all_fea  = np.transpose(all_fea, (2,0,1))
+    all_fea  = np.expand_dims(all_fea, -1) # 70000*16*16*1
 
+    mnist_train_images = []
+    mnist_train_labels = []
+    mnist_test_images  = []
+    mnist_test_labels  = []
+    for n in range(1,n_class+1):
+        y_ind = np.where(all_label==n)[0]
+        random.shuffle(y_ind)
+        mnist_train_images.extend(all_fea[y_ind[0:train_nums]])
+        mnist_train_labels.extend(all_label[y_ind[0:train_nums]])
 
-def _read32(bytestream):
-    dt = np.dtype(np.uint32).newbyteorder('>')
-    return np.frombuffer(bytestream.read(4), dtype=dt)[0]
+        mnist_test_images.extend(all_fea[y_ind[train_nums:]])
+        mnist_test_labels.extend(all_label[y_ind[train_nums:]])
+    
+    mnist_train_images = np.array(mnist_train_images)
+    mnist_train_labels = np.reshape(np.array(mnist_train_labels), (-1))
+    mnist_test_images  = np.array(mnist_test_images)
+    mnist_test_labels  = np.reshape(np.array(mnist_test_labels), (-1))
 
+    print(np.shape(mnist_train_images), np.shape(mnist_train_labels))
+    print(np.shape(mnist_test_images), np.shape(mnist_test_labels))
+    
+    return mnist_train_images, mnist_train_labels-1, mnist_test_images, mnist_test_labels-1
 
-def extract_images(filename, verbose=True):
-    """Extract the images into a 4D uint8 numpy array [index, y, x, depth]."""
-    if verbose:
-        print('Extracting', filename)
-    with gzip.open(filename) as bytestream:
-        magic = _read32(bytestream)
-        if magic != 2051: #the function of this magic number is to ensure the correct file.
-            raise ValueError(
-              'Invalid magic number %d in MNIST image file: %s' %
-              (magic, filename))
-        num_images = _read32(bytestream)
-        rows = _read32(bytestream)
-        cols = _read32(bytestream)
-        buf = bytestream.read(rows * cols * num_images)
-        data = np.frombuffer(buf, dtype=np.uint8)
-        data = data.reshape(num_images, rows, cols, 1)
-        return data
-
-
-def extract_labels(filename, verbose=True):
-    """Extract the labels into a 1D uint8 numpy array [index]."""
-    if verbose:
-        print('Extracting', filename)
-    with gzip.open(filename) as bytestream:
-        magic = _read32(bytestream)
-        if magic != 2049:
-            raise ValueError(
-              'Invalid magic number %d in MNIST label file: %s' %
-              (magic, filename))
-        num_items = _read32(bytestream)
-        buf = bytestream.read(num_items)
-        labels = np.frombuffer(buf, dtype=np.uint8)
-        return labels
-
+# load_data()
 
 def shuffle_images_labels(images, labels):
     """shuffle the images """
@@ -82,61 +62,58 @@ def dump_pickle(filepath, d):
 def main():
     # command line arguments
     parser = argparse.ArgumentParser(description="Parser for MNIST data generation")
-    parser.add_argument("--num_labelled", type=int, default=1000)
+    parser.add_argument("--num_labelled", type=int, default=10)
+    parser.add_argument("--seed", type=int, default=1)
     args = parser.parse_args()
 
     n_labelled = args.num_labelled
-    random.seed(42)
-    np.random.seed(42)
-    data_dir = "../data/mnist/"
-    mnist_train_images_gz = 'train-images-idx3-ubyte.gz'
-    mnist_train_labels_gz = 'train-labels-idx1-ubyte.gz'
-    mnist_test_images_gz = 't10k-images-idx3-ubyte.gz'
-    mnist_test_labels_gz = 't10k-labels-idx1-ubyte.gz'
 
-    mnist_train_images = get_data(mnist_train_images_gz, data_dir)
-    mnist_train_images = extract_images(mnist_train_images)
-    mnist_train_labels = get_data(mnist_train_labels_gz, data_dir)
-    mnist_train_labels = extract_labels(mnist_train_labels)
-    mnist_test_images = get_data(mnist_test_images_gz, data_dir)
-    mnist_test_images = extract_images(mnist_test_images)
-    mnist_test_labels = get_data(mnist_test_labels_gz, data_dir)
-    mnist_test_labels = extract_labels(mnist_test_labels)
+    rand_seed = args.seed
+    random.seed(rand_seed)
+    np.random.seed(rand_seed)
+
+    n_class = 10
+    data_dir = "../data/mnist-10-data/label"+str(int(n_labelled/n_class))+'_'+str(rand_seed)
+    if not os.path.exists(data_dir):
+        os.system("mkdir -p %s" %(data_dir) )
+    if not os.path.exists(data_dir+'_mat'):
+        os.system("mkdir -p %s" %(data_dir+'_mat') )
     
+
+    # load coil20 dataset 
+    mnist_train_images, mnist_train_labels, mnist_test_images, mnist_test_labels = load_data()
+
     train_data_shuffle = [(x, y) for x, y in zip(mnist_train_images, mnist_train_labels)]
     random.shuffle(train_data_shuffle)
     mnist_shuffled_train_images = np.array([x[0] for x in train_data_shuffle])
     mnist_shuffled_train_labels = np.array([x[1] for x in train_data_shuffle])
 
-    validation_size = 10000
-    train_size = mnist_train_images.shape[0] - validation_size
-
+    train_size = n_class*20
     train_images = mnist_shuffled_train_images[:train_size].copy()
     train_labels = mnist_shuffled_train_labels[:train_size].copy()
 
-    validation_images = mnist_shuffled_train_images[train_size:].copy()
-    validation_labels = mnist_shuffled_train_labels[train_size:].copy()
+    validation_images = mnist_shuffled_train_images[:train_size].copy()
+    validation_labels = mnist_shuffled_train_labels[:train_size].copy()
 
     test_images = mnist_test_images
     test_labels = mnist_test_labels
 
     train_data_label_buckets = defaultdict(list)
-
+    
     #split into different label class
-    print(np.shape(train_images), np.shape(train_labels))
-
-    exit(-1)
     for image, label in zip(train_images, train_labels):
         train_data_label_buckets[label].append((image, label))
 
     num_labels = len(train_data_label_buckets)
+    print(num_labels)
 
     train_labelled_data_images = []
     train_labelled_data_labels = []
     train_unlabelled_data_images = []
     train_unlabelled_data_labels = []
+    train_unlabelled_data_labels_mat = []
 
-
+    print(n_labelled)
     #uniform labeled data in different class
     for label, label_data in train_data_label_buckets.items():
         count = n_labelled / num_labels
@@ -148,12 +125,14 @@ def main():
             train_unlabelled_data_images.append(v[0])
             # dummy label
             train_unlabelled_data_labels.append(-1)
+            train_unlabelled_data_labels_mat.append(v[1])
 
     train_labelled_images = np.array(train_labelled_data_images)
     train_labelled_labels = np.array(train_labelled_data_labels)
 
     train_unlabelled_images = np.array(train_unlabelled_data_images)
     train_unlabelled_labels = np.array(train_unlabelled_data_labels)
+    train_unlabelled_labels_mat = np.array(train_unlabelled_data_labels_mat)
 
     train_labelled_images = train_labelled_images[:, :, :, 0]
     train_unlabelled_images = train_unlabelled_images[:, :, :, 0]
@@ -163,10 +142,10 @@ def main():
     train_labelled_images, train_labelled_labels = shuffle_images_labels(train_labelled_images, train_labelled_labels)
 
     # normalizing, range[0, 1]
-    train_labelled_images = np.multiply(train_labelled_images, 1./255.)
-    train_unlabelled_images = np.multiply(train_unlabelled_images, 1./255.)
-    validation_images = np.multiply(validation_images, 1./255.)
-    test_images = np.multiply(test_images, 1./255,)
+    train_labelled_images = np.multiply(train_labelled_images, 1./65535.)
+    train_unlabelled_images = np.multiply(train_unlabelled_images, 1./65535.)
+    validation_images = np.multiply(validation_images, 1./65535.)
+    test_images = np.multiply(test_images, 1./65535,)
 
     print("=" * 50)
     print("train_labelled_images shape:", train_labelled_images.shape)
@@ -184,16 +163,29 @@ def main():
 
     print("Dumping pickles")
 
-    dump_pickle(data_dir + "train_labelled_images.p", train_labelled_images)
-    dump_pickle(data_dir + "train_labelled_labels.p", train_labelled_labels)
-    dump_pickle(data_dir + "train_unlabelled_images.p", train_unlabelled_images)
-    dump_pickle(data_dir + "train_unlabelled_labels.p", train_unlabelled_labels)
-    dump_pickle(data_dir + "validation_images.p", validation_images)
-    dump_pickle(data_dir + "validation_labels.p", validation_labels)
-    dump_pickle(data_dir + "test_images.p", test_images)
-    dump_pickle(data_dir + "test_labels.p", test_labels)
+    dump_pickle(data_dir + "/train_labelled_images.p", train_labelled_images)
+    dump_pickle(data_dir + "/train_labelled_labels.p", train_labelled_labels)
+    dump_pickle(data_dir + "/train_unlabelled_images.p", train_unlabelled_images)
+    dump_pickle(data_dir + "/train_unlabelled_labels.p", train_unlabelled_labels)
+    dump_pickle(data_dir + "/validation_images.p", validation_images)
+    dump_pickle(data_dir + "/validation_labels.p", validation_labels)
+    dump_pickle(data_dir + "/test_images.p", test_images)
+    dump_pickle(data_dir + "/test_labels.p", test_labels)
 
-    print("MNIST dataset successfully created")
+    # save to mat files    
+    all_mat = {}
+    all_mat['train_labelled_images'] = train_labelled_images
+    all_mat['train_labelled_labels'] = train_labelled_labels
+    all_mat['train_unlabelled_images'] = train_unlabelled_images
+    all_mat['train_unlabelled_labels']  = train_unlabelled_labels_mat
+    #all_mat['valid_images']  = valid_images
+    #all_mat['valid_labels']  = valid_labels
+    all_mat['test_images']  = test_images
+    all_mat['test_labels']  = test_labels
+    io.savemat(data_dir + "_mat/all_mat.mat", all_mat)
+
+
+    print("mnist dataset successfully created")
 
 
 if __name__ == "__main__":

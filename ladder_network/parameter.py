@@ -25,6 +25,12 @@ elif dataset=="hela":
     n_input=1024
     batch = 10
     lr = 0.001
+elif dataset=="mnist":
+    folder = '../data/mnist-10-data/label'+label+'_'+rand+'/'
+    n_class= 10
+    n_input=256
+    batch = 10
+    lr = 0.002
 elif dataset=="pollen":
     if resolution==25:
         folder = '../data/pollen-7-data/label'+label+'_'+rand+'/'
@@ -42,7 +48,7 @@ dec_layers = [250, 250, 250, 500, 1000, n_input/ratio]
 my_parameter = {
         # coil:20, hela:10, pollen:7
     'batch':batch,
-    'epochs':100,
+    'epochs':50,
     # coil:0.002, hela:0.001, pollen:0.001
     'learning_rate':lr,
     #'noise_std':0.3,

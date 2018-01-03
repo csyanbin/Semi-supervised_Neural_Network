@@ -1,4 +1,5 @@
 #!/bin/bash
+# 1:label 2:ratio 3:dataset
 echo $1 $2 $3
 for k in $( seq 1 20 )
 do
