@@ -10,15 +10,37 @@ import argparse
 import urllib.request
 
 from scipy import io
+from PIL import Image
 import random
 
-def load_data(train_nums=20):
+def resize_imgs(all_fea, outsize):
+    # input, 32*32*1440, output, x*x*1440
+    print(np.shape(all_fea))
+    num = np.shape(all_fea)[-1]
+    out_fea = np.zeros([outsize, outsize, num])
+    
+    for i in range(num):
+        img = Image.fromarray(all_fea[:,:,i])
+        img2 = img.resize([outsize,outsize])
+        img2_array = np.asarray(img2)
+        out_fea[:,:,i] = img2_array
+
+    return out_fea
+
+
+def load_data(resolution, train_nums=20):
     # 1440*1024, 1440*1
     n_class = 20
     all_data = io.loadmat("../data/COIL20.mat")
     all_fea  = all_data['fea']
     all_label= all_data['gnd']
-    all_fea  = np.reshape(all_fea, (-1, 32, 32, 1))
+    all_fea  = np.reshape(all_fea, (-1, 32, 32)) # 1440*32*32
+    all_fea  = np.transpose(all_fea, (1,2,0))       # 32*32*144
+    if not resolution==32:
+        all_fea = resize_imgs(all_fea, resolution)
+        print(np.shape(all_fea))
+    all_fea  = np.transpose(all_fea, (2, 0, 1))
+    all_fea  = np.expand_dims(all_fea, -1)
 
     mnist_train_images = []
     mnist_train_labels = []
@@ -63,14 +85,23 @@ def main():
     parser = argparse.ArgumentParser(description="Parser for MNIST data generation")
     parser.add_argument("--num_labelled", type=int, default=20)
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--resolution", type=int, default=32)
     args = parser.parse_args()
 
     n_labelled = args.num_labelled
+    resolution = args.resolution
 
     rand_seed = args.seed
     random.seed(rand_seed)
     np.random.seed(rand_seed)
-    data_dir = "../data/coil-20-data/label"+str(int(n_labelled/20))+'_'+str(rand_seed)
+
+    n_class = 20
+    # default resolution is 25*25
+    if args.resolution==32:
+        data_dir = "../data/coil-20-data/label"+str(int(n_labelled/n_class))+'_'+str(rand_seed)
+    else:
+        data_dir = "../data/coil-20-data/label"+str(resolution)+"_"+str(int(n_labelled/n_class))+'_'+str(rand_seed)
+
     if not os.path.exists(data_dir):
         os.system("mkdir %s" %(data_dir) )
     if not os.path.exists(data_dir+'_mat'):
@@ -78,7 +109,7 @@ def main():
     
 
     # load coil20 dataset 
-    mnist_train_images, mnist_train_labels, mnist_test_images, mnist_test_labels = load_data()
+    mnist_train_images, mnist_train_labels, mnist_test_images, mnist_test_labels = load_data(resolution)
 
     train_data_shuffle = [(x, y) for x, y in zip(mnist_train_images, mnist_train_labels)]
     random.shuffle(train_data_shuffle)

@@ -131,6 +131,7 @@ def main():
     use_cuda = my_parameter['cuda']
     starter_lr = my_parameter['learning_rate'] 
     encoder_sizes = my_parameter['encoder_sizes']
+    print(encoder_sizes)
     decoder_sizes = my_parameter['decoder_sizes']
     unsupervised_costs_lambda =  my_parameter['unsupervised_cost_lambda']
     encoder_activations = my_parameter['encoder_activations'] 
@@ -335,14 +336,14 @@ def main():
 
             """Show the performance after every batch"""
             if ind_labelled == ind_limit:
-                ladder.eval()
-                best_answer, best_test = evaluate_performance(ladder, validation_loader, test_loader, e,
-                                     agg_cost / num_batches,
-                                     agg_supervised_cost / num_batches,
-                                     agg_unsupervised_cost / num_batches,
-                                     use_cuda,
-                                     best_answer,
-                                     best_test)
+                # ladder.eval()
+                # best_answer, best_test = evaluate_performance(ladder, validation_loader, test_loader, e,
+                #                      agg_cost / num_batches,
+                #                      agg_supervised_cost / num_batches,
+                #                      agg_unsupervised_cost / num_batches,
+                #                      use_cuda,
+                #                      best_answer,
+                #                      best_test)
                 ladder.train()
     # print("**********************************************")
     # print("* Finish! The best accuracy: ", best_answer)

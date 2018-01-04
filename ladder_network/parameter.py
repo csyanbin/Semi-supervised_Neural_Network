@@ -1,5 +1,5 @@
 import sys
-print(sys.argv[1])
+print(sys.argv)
 label = sys.argv[1]
 rand  = sys.argv[2]
 
@@ -8,15 +8,18 @@ dataset = 'pollen'
 resolution = 25
 if len(sys.argv)>=4:
     ratio = float(sys.argv[3])
-if len(sys.argv)==5:
+if len(sys.argv)>=5:
     dataset = sys.argv[4]
 if len(sys.argv)==6:
     resolution = int(sys.argv[5])
 
-if dataset=='coil':
-    folder = '../data/coil-20-data/label'+label+'_'+rand+'/'
+if dataset=="coil":
+    if resolution==32:
+        folder = '../data/coil-20-data/label'+label+'_'+rand+'/'
+    else:
+        folder = '../data/coil-20-data/label'+str(resolution)+'_'+label+'_'+rand+'/'
     n_class= 20
-    n_input=1024
+    n_input=resolution*resolution
     batch = 20
     lr = 0.002
 elif dataset=="hela":
@@ -30,25 +33,23 @@ elif dataset=="mnist":
     n_class= 10
     n_input=256
     batch = 10
-    lr = 0.002
+    lr = 0.001
 elif dataset=="pollen":
     if resolution==25:
         folder = '../data/pollen-7-data/label'+label+'_'+rand+'/'
     else:
         folder = '../data/pollen-7-data/label'+str(resolution)+'_'+label+'_'+rand+'/'
-
     n_class= 7
     n_input=resolution*resolution
     batch = 7
     lr = 0.001
-
 
 enc_layers = [1000, 500, 250, 250, 250, n_class/ratio]
 dec_layers = [250, 250, 250, 500, 1000, n_input/ratio]
 my_parameter = {
         # coil:20, hela:10, pollen:7
     'batch':batch,
-    'epochs':50,
+    'epochs':100,
     # coil:0.002, hela:0.001, pollen:0.001
     'learning_rate':lr,
     #'noise_std':0.3,
