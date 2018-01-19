@@ -1,4 +1,5 @@
 #!/bin/bash
+# compute for resolution varies from 10 to 32
 for k in $( seq 1 20 )
 do
     for res in 10 16 20 32

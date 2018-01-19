@@ -81,6 +81,7 @@ def main():
     # command line arguments
     parser = argparse.ArgumentParser(description="Parser for MNIST data generation")
     parser.add_argument("--num_labelled", type=int, default=7)
+    parser.add_argument("--train_nums", type=int, default=20)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--resolution", type=int, default=25)
     args = parser.parse_args()
@@ -93,9 +94,13 @@ def main():
     np.random.seed(rand_seed)
 
     n_class = 7
+    train_nums = args.train_nums    # default 20
     # default resolution is 25*25
     if args.resolution==25:
         data_dir = "../data/pollen-7-data/label"+str(int(n_labelled/n_class))+'_'+str(rand_seed)
+        if not train_nums==20:
+            data_dir = "../data/pollen-7-data/label"+str(int(n_labelled/n_class))+'_tn'+str(train_nums)+'_'+str(rand_seed)
+
     else:
         data_dir = "../data/pollen-7-data/label"+str(resolution)+"_"+str(int(n_labelled/n_class))+'_'+str(rand_seed)
 
@@ -106,14 +111,14 @@ def main():
     
 
     # load coil20 dataset 
-    mnist_train_images, mnist_train_labels, mnist_test_images, mnist_test_labels = load_data(resolution)
+    mnist_train_images, mnist_train_labels, mnist_test_images, mnist_test_labels = load_data(resolution, train_nums)
 
     train_data_shuffle = [(x, y) for x, y in zip(mnist_train_images, mnist_train_labels)]
     random.shuffle(train_data_shuffle)
     mnist_shuffled_train_images = np.array([x[0] for x in train_data_shuffle])
     mnist_shuffled_train_labels = np.array([x[1] for x in train_data_shuffle])
 
-    train_size = n_class*20
+    train_size = n_class*train_nums;
     train_images = mnist_shuffled_train_images[:train_size].copy()
     train_labels = mnist_shuffled_train_labels[:train_size].copy()
 

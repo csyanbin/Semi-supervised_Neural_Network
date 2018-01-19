@@ -6,16 +6,21 @@ rand  = sys.argv[2]
 ratio = 1.0
 dataset = 'pollen'
 resolution = 25
+train_nums = 20
 if len(sys.argv)>=4:
     ratio = float(sys.argv[3])
 if len(sys.argv)>=5:
     dataset = sys.argv[4]
-if len(sys.argv)==6:
+if len(sys.argv)>=6:
     resolution = int(sys.argv[5])
+if len(sys.argv)==7:
+    train_nums = int(sys.argv[6])
 
 if dataset=="coil":
     if resolution==32:
         folder = '../data/coil-20-data/label'+label+'_'+rand+'/'
+        if not train_nums==20:
+            folder = "../data/coil-20-data/label"+label+'_tn'+str(train_nums)+'_'+rand+'/'
     else:
         folder = '../data/coil-20-data/label'+str(resolution)+'_'+label+'_'+rand+'/'
     n_class= 20
@@ -37,6 +42,8 @@ elif dataset=="mnist":
 elif dataset=="pollen":
     if resolution==25:
         folder = '../data/pollen-7-data/label'+label+'_'+rand+'/'
+        if not train_nums==20:
+            folder = "../data/pollen-7-data/label"+label+'_tn'+str(train_nums)+'_'+rand+'/'
     else:
         folder = '../data/pollen-7-data/label'+str(resolution)+'_'+label+'_'+rand+'/'
     n_class= 7
